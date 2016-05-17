@@ -19,14 +19,14 @@ alias hgca='hg commit --amend'
 alias hgun='hg resolve --list'
 
 function in_hg() {
-  if [[ -d .hg ]] || $(hg summary > /dev/null 2>&1); then
+  if [[ -d .hg ]] || $(_ohmy_hg_fast summary > /dev/null 2>&1); then
     echo 1
   fi
 }
 
 function hg_get_branch_name() {
   if [ $(in_hg) ]; then
-    echo $(hg branch)
+    echo $(_ohmy_hg_fast branch)
   fi
 }
 
