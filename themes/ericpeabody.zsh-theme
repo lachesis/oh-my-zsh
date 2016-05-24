@@ -1,11 +1,7 @@
-if [[ "$(hostname)" == "svoboda" ]]; then
-    local host_color="%{$fg[red]%}"
-elif [[ "$(hostname)" == "tron" ]]; then
-    local host_color="%{$fg[magenta]%}"
-elif [[ "$(hostname)" == "aftbit" || "$(hostname)" == "folklore" ]]; then
-    local host_color="%{$fg[blue]%}"
+if [[ "$(hostname)" == "tron" ]]; then
+  local host_color="%{$fg[magenta]%}"
 else
-    local host_color="%{$reset_color%}"
+  local host_color="%{$reset_color%}"
 fi
 
 local user='%n%{$fg[cyan]%}@%{$host_color%}%m%{$reset_color%}'
@@ -34,5 +30,12 @@ ZSH_THEME_GIT_PROMPT_RENAMED="%{$fg[magenta]%} ➜"
 ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg[yellow]%} ═"
 ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[cyan]%} ✭"
 
-PROMPT="${user} ${pwd}$ "
+local function psst() {
+  if [[ "$INCOGNITO" == "TRUE" ]]; then
+    echo "%{$fg[cyan]%}(psst)%{$reset_color%} "
+  fi
+}
+local psst_var='$(psst)'
+
+PROMPT="${psst_var}${user} ${pwd}$ "
 RPROMPT="${return_code} ${git_branch} ${hg_branch} ${rvm}"
