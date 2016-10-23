@@ -30,12 +30,12 @@ ZSH_THEME_GIT_PROMPT_RENAMED="%{$fg[magenta]%} ➜"
 ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg[yellow]%} ═"
 ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[cyan]%} ✭"
 
-local function psst() {
+function _local_function_psst() {
   if [[ "$INCOGNITO" == "TRUE" ]]; then
     echo "%{$fg[cyan]%}(psst)%{$reset_color%} "
   fi
 }
-local psst_var='$(psst)'
+local psst_var='$(_local_function_psst)'
 
 PROMPT="${psst_var}${user} ${pwd}$ "
 RPROMPT="${return_code} ${git_branch} ${hg_branch} ${rvm}"
