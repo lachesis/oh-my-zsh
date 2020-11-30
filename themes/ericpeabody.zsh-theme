@@ -16,7 +16,7 @@ else
 fi
 local return_code='%(?..%{$fg[red]%}%? ↵%{$reset_color%})'
 local git_branch='$(git_prompt_status)%{$reset_color%}$(git_prompt_info)%{$reset_color%}'
-local hg_branch='%{$fg[green]%}$(_ohmy_hg_fast branch 2> /dev/null)%{$reset_color%}'
+#local hg_branch='%{$fg[green]%}$(_ohmy_hg_fast branch 2> /dev/null)%{$reset_color%}'
 
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[green]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
@@ -38,4 +38,4 @@ function _local_function_psst() {
 local psst_var='$(_local_function_psst)'
 
 PROMPT="${psst_var}${user} ${pwd}$ "
-RPROMPT="${return_code} ${git_branch} ${hg_branch} ${rvm}"
+RPROMPT="${return_code} ${git_branch} ${rvm}"

@@ -11,12 +11,23 @@ accept-line() {
 }
 zle -N accept-line
 
+function set-title() {
+  if [ -z $1 ]; then
+    DISABLE_AUTO_TITLE="false"
+  else
+    DISABLE_AUTO_TITLE="true"
+    echo -n -e "\033]0;$1\007"
+  fi
+}
+
 function toggle-incognito() {
   if [ "$INCOGNITO" = "TRUE" ]
   then
     export INCOGNITO="FALSE"
+    set-title
   else
     export INCOGNITO="TRUE"
+    set-title "(shell)"
   fi
 
   zle .clear-screen
