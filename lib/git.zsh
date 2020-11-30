@@ -149,69 +149,7 @@ function git_prompt_long_sha() {
 }
 
 function git_prompt_status() {
-<<<<<<< HEAD
   [[ $NOGIT == 'true' ]] && return
-  if [[ "$(command git config --get oh-my-zsh.hide-status 2>/dev/null)" != "1" ]]; then
-    local INDEX STATUS
-    INDEX=$(command git status --porcelain -b 2> /dev/null)
-    STATUS=""
-    if $(echo "$INDEX" | command grep -E '^\?\? ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_UNTRACKED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^A  ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
-    elif $(echo "$INDEX" | grep '^M  ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_ADDED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^ M ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_MODIFIED$STATUS"
-    elif $(echo "$INDEX" | grep '^AM ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_MODIFIED$STATUS"
-    elif $(echo "$INDEX" | grep '^ T ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_MODIFIED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^R  ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_RENAMED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^ D ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"
-    elif $(echo "$INDEX" | grep '^D  ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"
-    elif $(echo "$INDEX" | grep '^AD ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_DELETED$STATUS"
-    fi
-    if $(command git rev-parse --verify refs/stash >/dev/null 2>&1); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_STASHED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^UU ' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_UNMERGED$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^## [^ ]\+ .*ahead' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_AHEAD$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^## [^ ]\+ .*behind' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_BEHIND$STATUS"
-    fi
-    if $(echo "$INDEX" | grep '^## [^ ]\+ .*diverged' &> /dev/null); then
-      STATUS="$ZSH_THEME_GIT_PROMPT_DIVERGED$STATUS"
-    fi
-  fi
-}
-
-# Compares the provided version of git to the version installed and on path
-# Outputs -1, 0, or 1 if the installed version is less than, equal to, or
-# greater than the input version, respectively.
-function git_compare_version() {
-  local INPUT_GIT_VERSION INSTALLED_GIT_VERSION
-  INPUT_GIT_VERSION=(${(s/./)1})
-  INSTALLED_GIT_VERSION=($(command git --version 2>/dev/null))
-  INSTALLED_GIT_VERSION=(${(s/./)INSTALLED_GIT_VERSION[3]})
-
-  for i in {1..3}; do
-    if [[ $INSTALLED_GIT_VERSION[$i] -gt $INPUT_GIT_VERSION[$i] ]]; then
-      echo 1
-      return 0
-=======
   [[ "$(__git_prompt_git config --get oh-my-zsh.hide-status 2>/dev/null)" = 1 ]] && return
 
   # Maps a git status prefix to an internal constant
@@ -294,7 +232,6 @@ function git_compare_version() {
 
     if [[ "$status_text" =~ $status_regex ]]; then
       statuses_seen[$status_constant]=1
->>>>>>> master
     fi
   done
 
