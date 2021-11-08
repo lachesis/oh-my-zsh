@@ -28,6 +28,9 @@ function toggle-incognito() {
   else
     export INCOGNITO="TRUE"
     set-title "(shell)"
+    NOGIT=true
+    alias mpv='mpv --volume=0'
+    alias ls='ls --color=never'
   fi
 
   zle .clear-screen
