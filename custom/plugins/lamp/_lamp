@@ -1,0 +1,63 @@
+#compdef lamp
+
+_lamp() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+
+  local -a lamps modes
+
+  # Define available lamp names
+  lamps=(
+    'grow:Grow light (kasa-plug1)'
+    'bright:Bright light (kasa-plug1)'
+    'kauf-plug1:Kauf plug 1'
+    'cali-grow:California grow light (kauf-plug1)'
+    'kauf-plug2:Kauf plug 2'
+    'bathroom-nightlight:Bathroom nightlight (kauf-plug2)'
+    'kauf-plug3:Kauf plug 3'
+    'office-incan:Office incandescent (kauf-plug3)'
+    'kauf-plug4:Kauf plug 4'
+    'office-halide:Office halide (kauf-plug4)'
+    'lps:LPS light (kasa-plug2)'
+    'hps:HPS light (kasa-plug3)'
+    'fan:Fan (kasa-plug6)'
+    'panel:Panel light (kasa-plug4)'
+    'dim:Dim light (kasa-plug4)'
+    'desk:Desk lamp'
+    'server:Server (kasa-plug5)'
+    'rice:Rice cooker (kasa-plug7)'
+    'old-office-fan:Old office fan (kasa-plug7)'
+    'tree:Tree lights (kasa-plug7)'
+    'fire-tv:Fire TV (toggle only)'
+    'vizio-tv:Vizio TV (toggle only)'
+  )
+
+  # Define available modes
+  modes=(
+    'true:Turn on'
+    'on:Turn on'
+    'false:Turn off'
+    'off:Turn off'
+    'bright:Bright mode (desk lamp)'
+    'dim:Dim mode (desk lamp)'
+  )
+
+  _arguments \
+    '1:lamp name:->lamp' \
+    '2:mode:->mode' \
+    '3:brightness level (for desk lamp bright/dim):' \
+    && return 0
+
+  case $state in
+    lamp)
+      _describe -t lamps 'lamp name' lamps
+      ;;
+    mode)
+      _describe -t modes 'mode' modes
+      ;;
+  esac
+
+  return 0
+}
+
+_lamp "$@"
