@@ -146,14 +146,24 @@ case $state in
       (help)
          _arguments ':feature:__task_list'
          ;;
+      (format)
+        _arguments -C \
+          '--check-formatted' \
+          '--dot-formatter' \
+          '--dry-run' \
+          '--force' \
+          '--migrate' \
+          '--no-exit' \
+          '*::file:_files'
+          ;;
       (test)
-         _files
+         _path_files -X "All tests" -g "test/**/*_test.exs" -g "apps/*/test/**/*_test.exs"
          ;;
       (test.watch)
          _files
          ;;
       (run)
-         _files
+         _files -g "*.(exs|ex)"
          ;;
     esac
   ;;

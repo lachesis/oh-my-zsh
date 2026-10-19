@@ -19,6 +19,9 @@ local -a exts=(
   lz4
   lzma
   obscpio
+  pk3
+  pk4
+  pk7
   rar
   rpm
   sublime-package
@@ -50,5 +53,6 @@ local -a exts=(
 
 _arguments \
   '(-r --remove)'{-r,--remove}'[Remove archive.]' \
+  '(-t --to-directory)'{-t,--to-directory}'[Extract to a specific directory.]' \
   "*::archive file:_files -g '(#i)*.(${(j:|:)exts})(-.)'" \
     && return 0

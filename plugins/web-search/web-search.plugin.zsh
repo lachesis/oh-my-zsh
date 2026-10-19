@@ -28,11 +28,22 @@ function web_search() {
     youtube         "https://www.youtube.com/results?search_query="
     deepl           "https://www.deepl.com/translator#auto/auto/"
     dockerhub       "https://hub.docker.com/search?q="
+    gems            "https://rubygems.org/search?query="
     npmpkg          "https://www.npmjs.com/search?q="
     packagist       "https://packagist.org/?query="
     gopkg           "https://pkg.go.dev/search?m=package&q="
+    maven           "https://central.sonatype.com/search?q="
+    pypi            "https://pypi.org/search/?q="
+    aur             "https://aur.archlinux.org/packages?O=0&K="
+    archwiki        "https://wiki.archlinux.org/index.php?search="
+    wikipedia       "https://en.wikipedia.org/w/index.php?search="
     chatgpt         "https://chatgpt.com/?q="
+    grok            "https://grok.com/?q="
+    claudeai        "https://claude.ai/new?q="
     reddit          "https://www.reddit.com/search/?q="
+    ppai            "https://www.perplexity.ai/search/new?q="
+    rscrate         "https://crates.io/search?q="
+    rsdoc           "https://docs.rs/releases/search?query="
   )
 
   # check whether the search engine is supported
@@ -82,11 +93,22 @@ alias ask='web_search ask'
 alias youtube='web_search youtube'
 alias deepl='web_search deepl'
 alias dockerhub='web_search dockerhub'
+alias gems='web_search gems'
 alias npmpkg='web_search npmpkg'
 alias packagist='web_search packagist'
 alias gopkg='web_search gopkg'
+alias maven='web_search maven'
+alias pypi='web_search pypi'
+alias aur='web_search aur'
+alias archwiki='web_search archwiki'
+alias wikipedia='web_search wikipedia'
 alias chatgpt='web_search chatgpt'
+alias grokcom='web_search grok'
+alias claudeai='web_search claudeai'
 alias reddit='web_search reddit'
+alias ppai='web_search ppai'
+alias rscrate='web_search rscrate'
+alias rsdoc='web_search rsdoc'
 
 #add your own !bang searches here
 alias wiki='web_search duckduckgo \!w'

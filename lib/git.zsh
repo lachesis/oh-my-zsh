@@ -13,10 +13,16 @@ function __git_prompt_git() {
 
 function _omz_git_prompt_info() {
   [[ $NOGIT == 'true' ]] && return
-  # If we are on a folder not tracked by git, get out.
-  # Otherwise, check for hide-info at global and local repository level
-  if ! __git_prompt_git rev-parse --git-dir &> /dev/null \
-    || [[ "$(__git_prompt_git config --get oh-my-zsh.hide-info 2>/dev/null)" == 1 ]]; then
+  # Get the git dir and the current branch name in one call. Outside a repo
+  # there is no output. On a detached HEAD the branch is "HEAD". On an unborn
+  # branch git exits non-zero after printing the git dir.
+  local -a info
+  info=("${(@f)$(__git_prompt_git rev-parse --git-dir --abbrev-ref HEAD 2> /dev/null)}")
+  local unborn=$(( $? != 0 ))
+  [[ -n "$info[1]" ]] || return 0
+
+  # Check for hide-info at global and local repository level
+  if [[ "$(__git_prompt_git config --get oh-my-zsh.hide-info 2>/dev/null)" == 1 ]]; then
     return 0
   fi
 
@@ -24,11 +30,15 @@ function _omz_git_prompt_info() {
   # - the current branch name
   # - the tag name if we are on a tag
   # - the short SHA of the current commit
-  local ref
-  ref=$(__git_prompt_git symbolic-ref --short HEAD 2> /dev/null) \
-  || ref=$(__git_prompt_git describe --tags --exact-match HEAD 2> /dev/null) \
-  || ref=$(__git_prompt_git rev-parse --short HEAD 2> /dev/null) \
-  || return 0
+  # a git dir path may contain newlines, so the branch is the last line
+  local ref="$info[-1]"
+  if (( unborn )); then
+    ref=$(__git_prompt_git symbolic-ref --short HEAD 2> /dev/null) || return 0
+  elif [[ "$ref" == HEAD ]]; then
+    ref=$(__git_prompt_git describe --tags --exact-match HEAD 2> /dev/null) \
+    || ref=$(__git_prompt_git rev-parse --short HEAD 2> /dev/null) \
+    || return 0
+  fi
 
   # Use global ZSH_THEME_GIT_SHOW_UPSTREAM=1 for including upstream remote info
   local upstream
@@ -37,7 +47,127 @@ function _omz_git_prompt_info() {
     && upstream=" -> ${upstream}"
   fi
 
-  echo "${ZSH_THEME_GIT_PROMPT_PREFIX}${ref:gs/%/%%}${upstream:gs/%/%%}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}"
+  echo "${ZSH_THEME_GIT_PROMPT_PREFIX}${ref//\%/%%}${upstream//\%/%%}$(parse_git_dirty)${ZSH_THEME_GIT_PROMPT_SUFFIX}"
+}
+
+# Match an extended regular expression against a subject, forcing the C locale
+# only for the duration of the call.
+#
+# OHMYZSH-13330: zsh's "=~" operator delegates to the C library regex, which
+# aborts with REG_ILLSEQ when the subject contains an invalid byte sequence
+# under a multibyte locale (e.g. a filename with non-UTF-8 bytes in `git
+# status` output). Forcing the C locale makes every byte a valid character,
+# so the regex matching never fails that way. `git status --porcelain` is
+# locale-independent, so this does not change the parsed output.
+#
+# OHMYZSH-13985: the locale must be scoped to this function and not set for
+# the whole caller. Assigning LC_ALL makes zsh re-run setlocale() right away,
+# so leaving it set while the rest of the caller runs breaks multibyte
+# handling there — most visibly, `echo` refuses to expand Unicode escapes in
+# theme prompt symbols ("character not in range").
+function _omz_git_prompt_status_match() {
+  local -x LC_ALL=C
+  [[ "$1" =~ "$2" ]]
+}
+
+function _omz_git_prompt_status() {
+  [[ $NOGIT == 'true' ]] && return
+  [[ "$(__git_prompt_git config --get oh-my-zsh.hide-status 2>/dev/null)" = 1 ]] && return
+
+  # Maps a git status prefix to an internal constant
+  # This cannot use the prompt constants, as they may be empty
+  local -A prefix_constant_map
+  prefix_constant_map=(
+    '\?\? '     'UNTRACKED'
+    'A  '       'ADDED'
+    'M  '       'MODIFIED'
+    'MM '       'MODIFIED'
+    ' M '       'MODIFIED'
+    'AM '       'MODIFIED'
+    ' T '       'MODIFIED'
+    'R  '       'RENAMED'
+    ' D '       'DELETED'
+    'D  '       'DELETED'
+    'UU '       'UNMERGED'
+    'ahead'     'AHEAD'
+    'behind'    'BEHIND'
+    'diverged'  'DIVERGED'
+    'stashed'   'STASHED'
+  )
+
+  # Maps the internal constant to the prompt theme
+  local -A constant_prompt_map
+  constant_prompt_map=(
+    'UNTRACKED' "$ZSH_THEME_GIT_PROMPT_UNTRACKED"
+    'ADDED'     "$ZSH_THEME_GIT_PROMPT_ADDED"
+    'MODIFIED'  "$ZSH_THEME_GIT_PROMPT_MODIFIED"
+    'RENAMED'   "$ZSH_THEME_GIT_PROMPT_RENAMED"
+    'DELETED'   "$ZSH_THEME_GIT_PROMPT_DELETED"
+    'UNMERGED'  "$ZSH_THEME_GIT_PROMPT_UNMERGED"
+    'AHEAD'     "$ZSH_THEME_GIT_PROMPT_AHEAD"
+    'BEHIND'    "$ZSH_THEME_GIT_PROMPT_BEHIND"
+    'DIVERGED'  "$ZSH_THEME_GIT_PROMPT_DIVERGED"
+    'STASHED'   "$ZSH_THEME_GIT_PROMPT_STASHED"
+  )
+
+  # The order that the prompt displays should be added to the prompt
+  local status_constants
+  status_constants=(
+    UNTRACKED ADDED MODIFIED RENAMED DELETED
+    STASHED UNMERGED AHEAD BEHIND DIVERGED
+  )
+
+  local status_text
+  status_text="$(__git_prompt_git status --porcelain -b 2> /dev/null)"
+
+  # Don't continue on a catastrophic failure
+  if [[ $? -eq 128 ]]; then
+    return 1
+  fi
+
+  # A lookup table of each git status encountered
+  local -A statuses_seen
+
+  if __git_prompt_git rev-parse --verify refs/stash &>/dev/null; then
+    statuses_seen[STASHED]=1
+  fi
+
+  local status_lines
+  status_lines=("${(@f)${status_text}}")
+
+  # If the tracking line exists, get and parse it
+  if _omz_git_prompt_status_match "$status_lines[1]" "^## [^ ]+ \[(.*)\]"; then
+    local branch_statuses
+    branch_statuses=("${(@s/,/)match}")
+    for branch_status in $branch_statuses; do
+      if ! _omz_git_prompt_status_match "$branch_status" "(behind|diverged|ahead) ([0-9]+)?"; then
+        continue
+      fi
+      local last_parsed_status=$prefix_constant_map[$match[1]]
+      statuses_seen[$last_parsed_status]=$match[2]
+    done
+  fi
+
+  # For each status prefix, do a regex comparison
+  for status_prefix in "${(@k)prefix_constant_map}"; do
+    local status_constant="${prefix_constant_map[$status_prefix]}"
+    local status_regex=$'(^|\n)'"$status_prefix"
+
+    if _omz_git_prompt_status_match "$status_text" "$status_regex"; then
+      statuses_seen[$status_constant]=1
+    fi
+  done
+
+  # Display the seen statuses in the order specified
+  local status_prompt
+  for status_constant in $status_constants; do
+    if (( ${+statuses_seen[$status_constant]} )); then
+      local next_display=$constant_prompt_map[$status_constant]
+      status_prompt="$next_display$status_prompt"
+    fi
+  done
+
+  echo $status_prompt
 }
 
 # Use async version if setting is enabled, or unset but zsh version is at least 5.0.6.
@@ -64,13 +194,13 @@ if zstyle -t ':omz:alpha:lib:git' async-prompt \
   # or any of the other prompt variables
   function _defer_async_git_register() {
     # Check if git_prompt_info is used in a prompt variable
-    case "${PS1}:${PS2}:${PS3}:${PS4}:${RPROMPT}:${RPS1}:${RPS2}:${RPS3}:${RPS4}" in
+    case "${PS1}:${PS2}:${PS3}:${PS4}:${RPROMPT-}:${RPS1-}:${RPS2-}:${RPS3-}:${RPS4-}" in
     *(\$\(git_prompt_info\)|\`git_prompt_info\`)*)
       _omz_register_handler _omz_git_prompt_info
       ;;
     esac
 
-    case "${PS1}:${PS2}:${PS3}:${PS4}:${RPROMPT}:${RPS1}:${RPS2}:${RPS3}:${RPS4}" in
+    case "${PS1}:${PS2}:${PS3}:${PS4}:${RPROMPT-}:${RPS1-}:${RPS2-}:${RPS3-}:${RPS4-}" in
     *(\$\(git_prompt_status\)|\`git_prompt_status\`)*)
       _omz_register_handler _omz_git_prompt_status
       ;;
@@ -126,7 +256,8 @@ function parse_git_dirty() {
         FLAGS+="--ignore-submodules=${GIT_STATUS_IGNORE_SUBMODULES:-dirty}"
         ;;
     esac
-    STATUS=$(__git_prompt_git status ${FLAGS} 2> /dev/null | tail -n 1)
+    # only non-emptiness matters, so keep one line instead of the whole list
+    __git_prompt_git status ${FLAGS} 2> /dev/null | read -r STATUS
   fi
   if [[ -n $STATUS ]]; then
     echo "$ZSH_THEME_GIT_PROMPT_DIRTY"
@@ -157,7 +288,7 @@ function git_remote_status() {
         fi
 
         if [[ -n $ZSH_THEME_GIT_PROMPT_REMOTE_STATUS_DETAILED ]]; then
-            git_remote_status="$ZSH_THEME_GIT_PROMPT_REMOTE_STATUS_PREFIX${remote:gs/%/%%}$git_remote_status_detailed$ZSH_THEME_GIT_PROMPT_REMOTE_STATUS_SUFFIX"
+            git_remote_status="$ZSH_THEME_GIT_PROMPT_REMOTE_STATUS_PREFIX${remote//\%/%%}$git_remote_status_detailed$ZSH_THEME_GIT_PROMPT_REMOTE_STATUS_SUFFIX"
         fi
 
         echo $git_remote_status
@@ -245,106 +376,6 @@ function git_prompt_short_sha() {
 function git_prompt_long_sha() {
   local SHA
   SHA=$(__git_prompt_git rev-parse HEAD 2> /dev/null) && echo "$ZSH_THEME_GIT_PROMPT_SHA_BEFORE$SHA$ZSH_THEME_GIT_PROMPT_SHA_AFTER"
-}
-
-function _omz_git_prompt_status() {
-  [[ $NOGIT == 'true' ]] && return
-  [[ "$(__git_prompt_git config --get oh-my-zsh.hide-status 2>/dev/null)" = 1 ]] && return
-
-  # Maps a git status prefix to an internal constant
-  # This cannot use the prompt constants, as they may be empty
-  local -A prefix_constant_map
-  prefix_constant_map=(
-    '\?\? '     'UNTRACKED'
-    'A  '       'ADDED'
-    'M  '       'MODIFIED'
-    'MM '       'MODIFIED'
-    ' M '       'MODIFIED'
-    'AM '       'MODIFIED'
-    ' T '       'MODIFIED'
-    'R  '       'RENAMED'
-    ' D '       'DELETED'
-    'D  '       'DELETED'
-    'UU '       'UNMERGED'
-    'ahead'     'AHEAD'
-    'behind'    'BEHIND'
-    'diverged'  'DIVERGED'
-    'stashed'   'STASHED'
-  )
-
-  # Maps the internal constant to the prompt theme
-  local -A constant_prompt_map
-  constant_prompt_map=(
-    'UNTRACKED' "$ZSH_THEME_GIT_PROMPT_UNTRACKED"
-    'ADDED'     "$ZSH_THEME_GIT_PROMPT_ADDED"
-    'MODIFIED'  "$ZSH_THEME_GIT_PROMPT_MODIFIED"
-    'RENAMED'   "$ZSH_THEME_GIT_PROMPT_RENAMED"
-    'DELETED'   "$ZSH_THEME_GIT_PROMPT_DELETED"
-    'UNMERGED'  "$ZSH_THEME_GIT_PROMPT_UNMERGED"
-    'AHEAD'     "$ZSH_THEME_GIT_PROMPT_AHEAD"
-    'BEHIND'    "$ZSH_THEME_GIT_PROMPT_BEHIND"
-    'DIVERGED'  "$ZSH_THEME_GIT_PROMPT_DIVERGED"
-    'STASHED'   "$ZSH_THEME_GIT_PROMPT_STASHED"
-  )
-
-  # The order that the prompt displays should be added to the prompt
-  local status_constants
-  status_constants=(
-    UNTRACKED ADDED MODIFIED RENAMED DELETED
-    STASHED UNMERGED AHEAD BEHIND DIVERGED
-  )
-
-  local status_text
-  status_text="$(__git_prompt_git status --porcelain -b 2> /dev/null)"
-
-  # Don't continue on a catastrophic failure
-  if [[ $? -eq 128 ]]; then
-    return 1
-  fi
-
-  # A lookup table of each git status encountered
-  local -A statuses_seen
-
-  if __git_prompt_git rev-parse --verify refs/stash &>/dev/null; then
-    statuses_seen[STASHED]=1
-  fi
-
-  local status_lines
-  status_lines=("${(@f)${status_text}}")
-
-  # If the tracking line exists, get and parse it
-  if [[ "$status_lines[1]" =~ "^## [^ ]+ \[(.*)\]" ]]; then
-    local branch_statuses
-    branch_statuses=("${(@s/,/)match}")
-    for branch_status in $branch_statuses; do
-      if [[ ! $branch_status =~ "(behind|diverged|ahead) ([0-9]+)?" ]]; then
-        continue
-      fi
-      local last_parsed_status=$prefix_constant_map[$match[1]]
-      statuses_seen[$last_parsed_status]=$match[2]
-    done
-  fi
-
-  # For each status prefix, do a regex comparison
-  for status_prefix in ${(k)prefix_constant_map}; do
-    local status_constant="${prefix_constant_map[$status_prefix]}"
-    local status_regex=$'(^|\n)'"$status_prefix"
-
-    if [[ "$status_text" =~ $status_regex ]]; then
-      statuses_seen[$status_constant]=1
-    fi
-  done
-
-  # Display the seen statuses in the order specified
-  local status_prompt
-  for status_constant in $status_constants; do
-    if (( ${+statuses_seen[$status_constant]} )); then
-      local next_display=$constant_prompt_map[$status_constant]
-      status_prompt="$next_display$status_prompt"
-    fi
-  done
-
-  echo $status_prompt
 }
 
 # Outputs the name of the current user

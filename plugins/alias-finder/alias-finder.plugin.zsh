@@ -1,5 +1,5 @@
 alias-finder() {
-  local cmd=" " exact="" longer="" cheaper="" wordEnd="'{0,1}$" finder="" filter=""
+  local cmd=" " exact="" longer="" cheaper="" wordEnd="'?$" finder="" filter=""
 
   # build command and options
   for c in "$@"; do
@@ -31,19 +31,27 @@ alias-finder() {
 
   # find with alias and grep, removing last word each time until no more words
   while [[ $cmd != "" ]]; do
-    finder="'{0,1}$cmd$wordEnd"
+    finder="'?$cmd$wordEnd"
 
     # make filter to find only shorter results than current cmd
     if [[ $cheaper == true ]]; then
       cmdLen=$(echo -n "$cmd" | wc -c)
-      filter="^'{0,1}.{0,$((cmdLen - 1))}="
+      if [[ $cmdLen -le 1 ]]; then
+        return
+      fi
+
+      filter="^'?.{1,$((cmdLen - 1))}'?=" # some aliases is surrounded by single quotes
     fi
 
-    alias | grep -E "$filter" | grep -E "=$finder"
+    if (( $+commands[rg] )); then
+      alias | rg "$filter" | rg "=$finder"
+    else
+      alias | grep -E "$filter" | grep -E "=$finder"
+    fi
 
     if [[ $exact == true ]]; then
       break # because exact case is only one
-    elif [[ $longer = true ]]; then
+    elif [[ $longer == true ]]; then
       break # because above grep command already found every longer aliases during first cycle
     fi
 

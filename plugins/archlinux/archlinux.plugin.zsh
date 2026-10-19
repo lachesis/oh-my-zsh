@@ -16,7 +16,7 @@ alias pacloc='pacman -Qi'
 alias paclocs='pacman -Qs'
 alias pacinsd='sudo pacman -S --asdeps'
 alias pacmir='sudo pacman -Syy'
-alias paclsorphans='sudo pacman -Qdt'
+alias paclsorphans='pacman -Qdt'
 alias pacrmorphans='sudo pacman -Rs $(pacman -Qtdq)'
 alias pacfileupg='sudo pacman -Fy'
 alias pacfiles='pacman -F'
@@ -178,26 +178,27 @@ fi
 
 # Check Arch Linux PGP Keyring before System Upgrade to prevent failure.
 function upgrade() {
+  sudo pacman -Sy
   echo ":: Checking Arch Linux PGP Keyring..."
   local installedver="$(LANG= sudo pacman -Qi archlinux-keyring | grep -Po '(?<=Version         : ).*')"
   local currentver="$(LANG= sudo pacman -Si archlinux-keyring | grep -Po '(?<=Version         : ).*')"
   if [ $installedver != $currentver ]; then
     echo " Arch Linux PGP Keyring is out of date."
     echo " Updating before full system upgrade."
-    sudo pacman -Sy --needed --noconfirm archlinux-keyring
+    sudo pacman -S --needed --noconfirm archlinux-keyring
   else
     echo " Arch Linux PGP Keyring is up to date."
     echo " Proceeding with full system upgrade."
   fi
   if (( $+commands[yay] )); then
-    yay -Syu
+    yay -Su
   elif (( $+commands[trizen] )); then
-    trizen -Syu
+    trizen -Su
   elif (( $+commands[pacaur] )); then
-    pacaur -Syu
+    pacaur -Su
   elif (( $+commands[aura] )); then
-    sudo aura -Syu
+    sudo aura -Su
   else
-    sudo pacman -Syu
+    sudo pacman -Su
   fi
 }

@@ -17,13 +17,18 @@
 # Modified to add support for OpenBSD     #
 ###########################################
 
+: ${BATTERY_SHOW_WATTS:=false}
+
 
 if [[ "$OSTYPE" = darwin* ]]; then
+  function get_charger_power() {
+    echo "$(ioreg -rc AppleSmartBattery | grep -o '"Watts"=[0-9]\+' | head -1 | grep -o '[0-9]\+')W "
+  }
   function battery_is_charging() {
-    ioreg -rc AppleSmartBattery | command grep -q '^.*"ExternalConnected"\ =\ Yes'
+    ioreg -rc AppleSmartBattery | command grep -q '^.*"ExternalConnected" = Yes'
   }
   function battery_pct() {
-    pmset -g batt | grep -Eo "\d+%" | cut -d% -f1
+    pmset -g batt | grep -Eo "[0-9]+%" | cut -d% -f1
   }
   function battery_pct_remaining() {
     if battery_is_charging; then
@@ -34,8 +39,8 @@ if [[ "$OSTYPE" = darwin* ]]; then
   }
   function battery_time_remaining() {
     local smart_battery_status="$(ioreg -rc "AppleSmartBattery")"
-    if [[ $(echo $smart_battery_status | command grep -c '^.*"ExternalConnected"\ =\ No') -eq 1 ]]; then
-      timeremaining=$(echo $smart_battery_status | command grep '^.*"AvgTimeToEmpty"\ =\ ' | sed -e 's/^.*"AvgTimeToEmpty"\ =\ //')
+    if [[ $(echo $smart_battery_status | command grep -c '^.*"ExternalConnected" = No') -eq 1 ]]; then
+      timeremaining=$(echo $smart_battery_status | command grep '^.*"AvgTimeToEmpty" = ' | sed -e 's/^.*"AvgTimeToEmpty" = //')
       if [ $timeremaining -gt 720 ]; then
         echo "::"
       else
@@ -47,7 +52,7 @@ if [[ "$OSTYPE" = darwin* ]]; then
   }
   function battery_pct_prompt () {
     local battery_pct color
-    if ioreg -rc AppleSmartBattery | command grep -q '^.*"ExternalConnected"\ =\ No'; then
+    if ioreg -rc AppleSmartBattery | command grep -q '^.*"ExternalConnected" = No'; then
       battery_pct=$(battery_pct_remaining)
       if [[ $battery_pct -gt 50 ]]; then
         color='green'
@@ -58,7 +63,10 @@ if [[ "$OSTYPE" = darwin* ]]; then
       fi
       echo "%{$fg[$color]%}[${battery_pct}%%]%{$reset_color%}"
     else
-      echo "${BATTERY_CHARGING-⚡️}"
+      if [[ "${BATTERY_SHOW_WATTS}" = "true" ]] ; then
+        watts=$(get_charger_power)
+      fi
+      echo "${watts}${BATTERY_CHARGING-⚡️}"
     fi
   }
 

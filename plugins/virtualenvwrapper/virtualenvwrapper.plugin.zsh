@@ -4,6 +4,7 @@ function {
       $commands[virtualenvwrapper.sh] \
       /usr/share/virtualenvwrapper/virtualenvwrapper{_lazy,}.sh \
       /usr/local/bin/virtualenvwrapper{_lazy,}.sh \
+      /usr/bin/virtualenvwrapper{_lazy,}.sh \
       /etc/bash_completion.d/virtualenvwrapper \
       /usr/share/bash-completion/completions/virtualenvwrapper \
       $HOME/.local/bin/virtualenvwrapper.sh
@@ -38,7 +39,7 @@ if [[ ! $DISABLE_VENV_CD -eq 1 ]]; then
       # Get absolute path, resolving symlinks
       local PROJECT_ROOT="${PWD:A}"
       while [[ "$PROJECT_ROOT" != "/" && ! -e "$PROJECT_ROOT/.venv" \
-          && ! -d "$PROJECT_ROOT/.git" ]]; do
+          && ! -e "$PROJECT_ROOT/.git" ]]; do
         PROJECT_ROOT="${PROJECT_ROOT:h}"
       done
 
